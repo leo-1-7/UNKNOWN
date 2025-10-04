@@ -1,11 +1,17 @@
 (function () {
   const loadingScreen = document.getElementById('loading-screen');
+  const passwordScreen = document.getElementById('password-screen');
   const menuScreen = document.getElementById('menu-screen');
   const messageScreen = document.getElementById('message-screen');
   const cakeScreen = document.getElementById('cake-screen');
 
   const progressText = document.getElementById('progress-text');
   const progressFill = document.getElementById('progress-fill');
+  
+  // Password screen elements
+  const passwordInput = document.getElementById('password-input');
+  const welcomeMessage = document.getElementById('welcome-message');
+  
 
   const btnExitMain = document.getElementById('btn-exit-main');
   const btnOpen = document.getElementById('btn-open');
@@ -21,12 +27,144 @@
   const EXIT_URL = 'https://websitecursor.com/downloads';
 
   function showScreen(screenEl) {
-    for (const el of [loadingScreen, menuScreen, messageScreen, cakeScreen]) {
+    for (const el of [loadingScreen, passwordScreen, menuScreen, messageScreen, cakeScreen]) {
       if (!el) continue;
       el.classList.remove('active');
     }
     if (screenEl) screenEl.classList.add('active');
   }
+
+  // Password validation logic
+  let usedPasswords = new Set();
+  const VALID_PASSWORDS = [
+    "HAPPY010",
+    "CANNOTBITE23",
+    "SPICELATTE",
+    "MOPTHEFLOOR",
+    "Moon!37Cat",
+    "River9$Tree",
+    "Star_88Lion",
+    "Book#42Sun",
+    "Leaf3@Stone",
+    "Sky_77Boat",
+    "Tiger#84Moon",
+    "Rain5$Bird",
+    "Rock_62Star",
+    "Sun!93Tree",
+    "Frog7@Lake",
+    "Cloud#58Dog",
+    "Wind2$Cat",
+    "GROWALL40",
+    "REPLYTOME",
+    "FORFOXTRADE5$",
+    "CANTEATS76#"
+  ];
+
+  function initializePasswordScreen() {
+    // Check if there are any unused passwords left
+    if (usedPasswords.size >= VALID_PASSWORDS.length) {
+      // All passwords used, go directly to main menu
+      showScreen(menuScreen);
+      return;
+    }
+    
+    // Show password screen
+    showScreen(passwordScreen);
+    
+    // Reset password screen elements
+    if (passwordInput) {
+      passwordInput.value = '';
+      passwordInput.style.display = 'block';
+    }
+    
+    if (welcomeMessage) {
+      welcomeMessage.classList.add('hidden');
+    }
+    
+    // Clear any error messages
+    const errorMsg = document.getElementById('error-message');
+    if (errorMsg) {
+      errorMsg.remove();
+    }
+    
+    // Focus on password input
+    setTimeout(() => {
+      if (passwordInput) {
+        passwordInput.focus();
+      }
+    }, 100);
+  }
+
+  function validatePassword() {
+    const enteredPassword = passwordInput.value.trim();
+    
+    console.log('Entered password:', enteredPassword);
+    console.log('Valid passwords:', VALID_PASSWORDS);
+    console.log('Is valid password:', VALID_PASSWORDS.includes(enteredPassword));
+    console.log('Is already used:', usedPasswords.has(enteredPassword));
+    
+    // Check if password is valid and not already used
+    if (VALID_PASSWORDS.includes(enteredPassword) && !usedPasswords.has(enteredPassword)) {
+      // Correct password - show welcome message
+      passwordInput.style.display = 'none';
+      welcomeMessage.classList.remove('hidden');
+      
+      // Add animation class for styling
+      setTimeout(() => {
+        welcomeMessage.classList.add('show');
+      }, 100);
+      
+      // Auto-proceed to main menu after 3 seconds
+      setTimeout(() => {
+        showScreen(menuScreen);
+      }, 3000);
+      
+      // Mark this specific password as used
+      usedPasswords.add(enteredPassword);
+      saveUsedPasswords();
+      
+    } else {
+      // Wrong password - show error message
+      showErrorMessage();
+      passwordInput.style.animation = 'shake 0.5s ease-in-out';
+      passwordInput.value = '';
+      
+      setTimeout(() => {
+        passwordInput.style.animation = '';
+        passwordInput.focus();
+      }, 500);
+    }
+  }
+
+  function showErrorMessage() {
+    // Remove any existing error message
+    const existingError = document.getElementById('error-message');
+    if (existingError) {
+      existingError.remove();
+    }
+    
+    // Create new error message
+    const errorMsg = document.createElement('div');
+    errorMsg.id = 'error-message';
+    errorMsg.className = 'error-message';
+    errorMsg.textContent = 'WRONG PASSWORD';
+    
+    // Insert after password input
+    passwordInput.parentNode.insertBefore(errorMsg, passwordInput.nextSibling);
+    
+    // Auto-remove after 2 seconds
+    setTimeout(() => {
+      if (errorMsg.parentNode) {
+        errorMsg.remove();
+      }
+    }, 2000);
+  }
+
+  function saveUsedPasswords() {
+    const savedPasswords = Array.from(usedPasswords);
+    localStorage.setItem('birthdayUsedPasswords', JSON.stringify(savedPasswords));
+  }
+
 
   function startLoading() {
     let progress = 0;
@@ -53,7 +191,7 @@
       progressFill.style.width = `${shown}%`;
 
       if (shown >= 100) {
-        setTimeout(() => showScreen(menuScreen), 450);
+        setTimeout(() => initializePasswordScreen(), 450);
         return;
       }
 
@@ -92,6 +230,20 @@
     exitToUrl();
   });
   btnExitMessage.addEventListener('click', exitToUrl);
+  
+  // Password input event listeners
+  passwordInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') {
+      validatePassword();
+    }
+  });
+  
+  passwordInput.addEventListener('input', (event) => {
+    // Clear any existing error styling when user types
+    if (passwordInput.style.animation === 'shake 0.5s ease-in-out') {
+      passwordInput.style.animation = '';
+    }
+  });
 
   // Interactive Cake functionality
   let candles = [];
@@ -562,13 +714,34 @@
     console.log("Audio error:", e);
   });
 
+  // Load used passwords from localStorage
+  function loadUsedPasswords() {
+    try {
+      const saved = localStorage.getItem('birthdayUsedPasswords');
+      if (saved) {
+        const savedPasswords = JSON.parse(saved);
+        usedPasswords = new Set(savedPasswords);
+        
+        // Remove GROWALL40 from used passwords to make it available again
+        usedPasswords.delete('GROWALL40');
+        saveUsedPasswords(); // Save the updated list
+      }
+    } catch (error) {
+      console.log('Error loading used passwords:', error);
+      // If there's an error, start fresh
+      usedPasswords = new Set();
+    }
+  }
+
   // Kick off loading once DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => { 
+      loadUsedPasswords();
       startLoading(); 
       setupAutoResize(); 
     });
   } else {
+    loadUsedPasswords();
     startLoading();
     setupAutoResize();
   }
