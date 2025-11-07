@@ -13,10 +13,30 @@
     <!-- Loading Screen -->
     <section id="loading-screen" class="screen active" aria-label="Loading">
         <div class="loading-wrapper">
-            <div class="spinner" aria-hidden="true"></div>
-            <div class="progress-text" id="progress-text">0%</div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            <div class="loading-content">
+                <div class="loading-icon">
+                    <div class="icon-circle"></div>
+                    <div class="icon-sparkles">
+                        <span class="sparkle sparkle-1">✨</span>
+                        <span class="sparkle sparkle-2">✨</span>
+                        <span class="sparkle sparkle-3">✨</span>
+                    </div>
+                </div>
+                <h2 class="loading-title">Loading<span class="loading-dots-inline">
+                    <span class="dot dot-1">.</span>
+                    <span class="dot dot-2">.</span>
+                    <span class="dot dot-3">.</span>
+                </span></h2>
+                <div class="progress-container">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" id="progress-fill" style="width: 0%">
+                                <div class="progress-shine"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-text" id="progress-text">0%</div>
+                </div>
             </div>
         </div>
     </section>
@@ -25,9 +45,16 @@
     <section id="password-screen" class="screen" aria-label="Password Entry">
         <div class="password-wrapper">
             <div class="password-title">ENTER ONE TIME PASSWORD</div>
-            <input type="text" id="password-input" class="password-input" placeholder="Type password here..." />
-            <div class="password-caps-message">USE CAPSLOCK OR CAPITAL LETTERS ONLY</div>
-            <div class="password-instruction">
+            <div class="password-input-container">
+                <input type="text" id="password-input" class="password-input" placeholder="Type password here..." />
+                <button id="password-submit-btn" class="password-submit-btn" aria-label="Submit Password">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="password-caps-message" class="password-caps-message">USE CAPSLOCK OR CAPITAL LETTERS ONLY</div>
+            <div id="password-instruction" class="password-instruction">
                 ! THE PASSWORD IS ONLY 1 TIME USE AND YOU CANNOT USE IT AGAIN.
             </div>
             <div id="welcome-message" class="welcome-message hidden">
@@ -43,7 +70,32 @@
             <button id="btn-exit-main" class="btn btn-exit" aria-label="Exit">Exit</button>
             <div class="landscape-note">
                 <span class="note-icon">📱</span>
-                <span class="note-text">Optional: Tilt your screen to landscape for better experience</span>
+                <span class="note-text">Optional: Tilt your screen to landscape for better experience.<br>Reminder: Read the Instructions carefully!</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Selection Screen -->
+    <section id="selection-screen" class="screen" aria-label="Selection Screen">
+        <div class="selection-wrapper">
+            <!-- Mail Section -->
+            <div class="selection-section">
+                <div class="selection-box selection-box-red">
+                    <div class="box-emoji">✉️</div>
+                    <button id="btn-open-message" class="btn btn-selection btn-message" aria-label="Open This Message">
+                        <span class="btn-text">open this message</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Cake Section -->
+            <div class="selection-section">
+                <div class="selection-box selection-box-blue">
+                    <div class="box-emoji">🎂</div>
+                    <button id="btn-open-cake-selection" class="btn btn-selection btn-cake" aria-label="Open This Cake">
+                        <span class="btn-text">open this cake</span>
+                    </button>
+                </div>
             </div>
         </div>
     </section>
@@ -70,7 +122,7 @@ AND LASTLY, JUST STUDY HARD. YOU'LL HAVE TO GO THROUGH MANY DIFFICULT THINGS, BU
 ONCE AGAIN, HAPPY HAPPY BIRTHDAY! MAY THIS BE ONE OF YOUR BEST YEARS YET, FILLED WITH JOY, PEACE, AND ENDLESS REASONS TO BE HAPPY😉🎂✨" readonly aria-readonly="true" tabindex="-1"></textarea>
             </div>
             <div class="button-row">
-                <button id="btn-open-cake" class="btn btn-cake" aria-label="Open This Cake">OPEN THIS CAKE</button>
+                <button id="btn-back-to-main-menu-message" class="btn btn-back" aria-label="Back to Main Menu">Back to Main Menu</button>
                 <button id="btn-exit-message" class="btn btn-exit-bottom" aria-label="Exit">Exit</button>
             </div>
         </div>
@@ -79,6 +131,7 @@ ONCE AGAIN, HAPPY HAPPY BIRTHDAY! MAY THIS BE ONE OF YOUR BEST YEARS YET, FILLED
     <!-- Cake Screen -->
     <section id="cake-screen" class="screen" aria-label="Cake Screen">
         <div class="cake-wrapper">
+            <button id="cake-info-btn" class="cake-info-btn" aria-label="Show Instructions">!</button>
             <div class="candle-count-display">
                 HAPPY BIRTHDAY JIOLO!
             </div>
@@ -96,12 +149,34 @@ ONCE AGAIN, HAPPY HAPPY BIRTHDAY! MAY THIS BE ONE OF YOUR BEST YEARS YET, FILLED
                 </div>
             </div>
             <div class="cake-button-row">
-                <button id="btn-back-to-message" class="btn btn-back-small" aria-label="Back to Message">Back to Message</button>
+                <button id="btn-back-to-main-menu-cake" class="btn btn-back-small" aria-label="Back to Main Menu">Back to Main Menu</button>
                 <button id="btn-exit-cake" class="btn btn-exit-small" aria-label="Exit">Exit</button>
             </div>
-            <div class="cake-instruction-message">
-                <span class="announcement-icon">!</span>
-                <span>ADD AS MUCH CANDLE AS YOU WANT AND BLOW YOUR MICROPHONE</span>
+            
+            <!-- Countdown Timer Section -->
+            <div class="countdown-wrapper">
+                <div class="countdown-title">NEXT YEAR BIRTHDAY COUNTDOWN</div>
+                <div class="countdown-display" id="countdown-display">
+                    <span class="countdown-number" id="countdown-days">365</span>
+                    <span class="countdown-separator">:</span>
+                    <span class="countdown-number" id="countdown-hours">00</span>
+                    <span class="countdown-separator">:</span>
+                    <span class="countdown-number" id="countdown-minutes">00</span>
+                    <span class="countdown-separator">:</span>
+                    <span class="countdown-number" id="countdown-seconds">00</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cake Info Modal -->
+        <div id="cake-info-modal" class="cake-info-modal hidden">
+            <div class="cake-info-modal-content">
+                <button id="cake-info-close" class="cake-info-close" aria-label="Close">×</button>
+                <div class="cake-info-message">
+                    <p class="cake-info-text">*PLEASE ALLOW MICROPHONE.</p>
+                    <p class="cake-info-text">*ADD AS MUCH CANDLE AS YOU WANT AND BLOW YOUR MICROPHONE.</p>
+                    <p class="cake-info-text">*SOMETIMES THE MICROPHONE IS ACTING CRAZY, BUT IM FIXING IT.</p>
+                </div>
             </div>
         </div>
     </section>

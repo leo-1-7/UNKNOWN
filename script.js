@@ -2,22 +2,25 @@
   const loadingScreen = document.getElementById('loading-screen');
   const passwordScreen = document.getElementById('password-screen');
   const menuScreen = document.getElementById('menu-screen');
+  const selectionScreen = document.getElementById('selection-screen');
   const messageScreen = document.getElementById('message-screen');
   const cakeScreen = document.getElementById('cake-screen');
-
-  const progressText = document.getElementById('progress-text');
-  const progressFill = document.getElementById('progress-fill');
   
   // Password screen elements
   const passwordInput = document.getElementById('password-input');
+  const passwordSubmitBtn = document.getElementById('password-submit-btn');
   const welcomeMessage = document.getElementById('welcome-message');
   
+  // Caps Lock detection
+  let isCapsLockOn = false;
 
   const btnExitMain = document.getElementById('btn-exit-main');
   const btnOpen = document.getElementById('btn-open');
-  const btnOpenCake = document.getElementById('btn-open-cake');
+  const btnOpenMessage = document.getElementById('btn-open-message');
+  const btnOpenCakeSelection = document.getElementById('btn-open-cake-selection');
   const btnExitMessage = document.getElementById('btn-exit-message');
-  const btnBackToMessage = document.getElementById('btn-back-to-message');
+  const btnBackToMainMenuMessage = document.getElementById('btn-back-to-main-menu-message');
+  const btnBackToMainMenuCake = document.getElementById('btn-back-to-main-menu-cake');
   const btnExitCake = document.getElementById('btn-exit-cake');
   const balloonsLayer = document.querySelector('#message-screen .balloons-layer');
   const paperText = document.getElementById('paper-text');
@@ -25,13 +28,23 @@
   const candleCountDisplay = document.getElementById('candleCount');
 
   const EXIT_URL = 'https://websitecursor.com/downloads';
+  const COUNTDOWN_STORAGE_KEY = 'birthdayCountdownStartTime';
 
   function showScreen(screenEl) {
-    for (const el of [loadingScreen, passwordScreen, menuScreen, messageScreen, cakeScreen]) {
+    for (const el of [loadingScreen, passwordScreen, menuScreen, selectionScreen, messageScreen, cakeScreen]) {
       if (!el) continue;
       el.classList.remove('active');
     }
     if (screenEl) screenEl.classList.add('active');
+    
+    // If showing cake screen, check if countdown should resume
+    if (screenEl === cakeScreen) {
+      const savedStartTime = localStorage.getItem(COUNTDOWN_STORAGE_KEY);
+      if (savedStartTime && !countdownInterval) {
+        // Resume countdown if there's a saved time and no active interval
+        startCountdown();
+      }
+    }
   }
 
   // Password validation logic
@@ -74,7 +87,8 @@
     // Reset password screen elements
     if (passwordInput) {
       passwordInput.value = '';
-      passwordInput.style.display = 'block';
+      const passwordContainer = passwordInput.parentNode;
+      passwordContainer.style.display = 'flex'; // Show the container with input and button
     }
     
     if (welcomeMessage) {
@@ -96,7 +110,17 @@
   }
 
   function validatePassword() {
-    const enteredPassword = passwordInput.value.trim();
+    // Get fresh reference to elements
+    const input = document.getElementById('password-input');
+    const btn = document.getElementById('password-submit-btn');
+    const container = input ? input.parentNode : null;
+    
+    if (!input) {
+      console.error('Password input not found');
+      return;
+    }
+    
+    const enteredPassword = input.value.trim();
     
     console.log('Entered password:', enteredPassword);
     console.log('Valid passwords:', VALID_PASSWORDS);
@@ -105,14 +129,31 @@
     
     // Check if password is valid and not already used
     if (VALID_PASSWORDS.includes(enteredPassword) && !usedPasswords.has(enteredPassword)) {
-      // Correct password - show welcome message
-      passwordInput.style.display = 'none';
-      welcomeMessage.classList.remove('hidden');
+      // Correct password - hide password input container and instruction messages
+      if (container) {
+        container.style.display = 'none';
+      }
       
-      // Add animation class for styling
-      setTimeout(() => {
-        welcomeMessage.classList.add('show');
-      }, 100);
+      // Hide the caps message and instruction message
+      const capsMessage = document.getElementById('password-caps-message');
+      const instructionMessage = document.getElementById('password-instruction');
+      
+      if (capsMessage) {
+        capsMessage.style.display = 'none';
+      }
+      if (instructionMessage) {
+        instructionMessage.style.display = 'none';
+      }
+      
+      // Show welcome message
+      if (welcomeMessage) {
+        welcomeMessage.classList.remove('hidden');
+        
+        // Add animation class for styling
+        setTimeout(() => {
+          welcomeMessage.classList.add('show');
+        }, 100);
+      }
       
       // Auto-proceed to main menu after 3 seconds
       setTimeout(() => {
@@ -124,33 +165,67 @@
       saveUsedPasswords();
       
     } else {
-      // Wrong password - show error message
-      showErrorMessage();
-      passwordInput.style.animation = 'shake 0.5s ease-in-out';
-      passwordInput.value = '';
+      // Wrong password - check if user typed mostly lowercase (indicating Caps Lock is off)
+      // Count lowercase and uppercase letters
+      const lowercaseCount = (enteredPassword.match(/[a-z]/g) || []).length;
+      const uppercaseCount = (enteredPassword.match(/[A-Z]/g) || []).length;
+      
+      // If there are lowercase letters and no (or very few) uppercase letters, Caps Lock is likely off
+      const showCapsMessage = lowercaseCount > 0 && uppercaseCount === 0;
+      showErrorMessage(showCapsMessage);
+      
+      // Flash the input field
+      input.style.animation = 'shake 0.5s ease-in-out';
+      input.value = '';
+      
+      // Flash the button
+      if (btn) {
+        btn.style.animation = 'button-flash 0.5s ease-in-out';
+        setTimeout(() => {
+          btn.style.animation = '';
+        }, 500);
+      }
+      
+      // Flash the container
+      if (container) {
+        container.style.animation = 'container-flash 0.5s ease-in-out';
+        setTimeout(() => {
+          container.style.animation = '';
+        }, 500);
+      }
       
       setTimeout(() => {
-        passwordInput.style.animation = '';
-        passwordInput.focus();
+        input.style.animation = '';
+        input.focus();
       }, 500);
     }
   }
 
-  function showErrorMessage() {
+  function showErrorMessage(showCapsMessage = false) {
     // Remove any existing error message
     const existingError = document.getElementById('error-message');
     if (existingError) {
       existingError.remove();
     }
     
+    // Get fresh reference to password input
+    const input = document.getElementById('password-input');
+    if (!input || !input.parentNode) {
+      console.error('Cannot show error message - password input or container not found');
+      return;
+    }
+    
     // Create new error message
     const errorMsg = document.createElement('div');
     errorMsg.id = 'error-message';
     errorMsg.className = 'error-message';
-    errorMsg.textContent = 'WRONG PASSWORD';
+    errorMsg.textContent = showCapsMessage ? 'USE CAPSLOCK' : 'WRONG PASSWORD';
     
-    // Insert after password input
-    passwordInput.parentNode.insertBefore(errorMsg, passwordInput.nextSibling);
+    // Insert after password input container
+    const passwordContainer = input.parentNode;
+    if (passwordContainer.parentNode) {
+      passwordContainer.parentNode.insertBefore(errorMsg, passwordContainer.nextSibling);
+    }
     
     // Auto-remove after 2 seconds
     setTimeout(() => {
@@ -167,38 +242,43 @@
 
 
   function startLoading() {
-    let progress = 0;
-
-    function nextDelay() {
-      // 400–650ms to avoid looking too uniform
-      return 400 + Math.floor(Math.random() * 250);
-    }
-
-    function nextIncrement(current) {
-      // Base around ~3%, slight variance 2–4%
-      let inc = 2 + Math.random() * 2;
-      // Ease near the end (90%+): smaller bumps
-      if (current > 90) inc = 1 + Math.random();
-      // Tiny chance of a micro step to break pattern
-      if (Math.random() < 0.08) inc = 1;
-      return inc;
-    }
-
-    function tick() {
-      progress = Math.min(100, progress + nextIncrement(progress));
-      const shown = Math.min(100, Math.round(progress));
-      progressText.textContent = `${shown}%`;
-      progressFill.style.width = `${shown}%`;
-
-      if (shown >= 100) {
-        setTimeout(() => initializePasswordScreen(), 450);
+    // Small delay to ensure DOM is fully ready
+    setTimeout(() => {
+      // Get elements directly to ensure they exist
+      const pt = document.getElementById('progress-text');
+      const pf = document.getElementById('progress-fill');
+      
+      if (!pt || !pf) {
+        console.error('Loading elements not found', { pt, pf });
+        // If elements not found, skip loading and go to password screen
+        setTimeout(() => initializePasswordScreen(), 100);
         return;
       }
+      
+      console.log('Starting loading animation');
+      
+      // Initialize to 0%
+      pt.textContent = '0%';
+      pf.style.width = '0%';
+      
+      const duration = 12000; // 12 seconds total for slower loading
+      const startTime = Date.now();
+      const updateInterval = 50; // Update every 50ms for smooth animation
 
-      setTimeout(tick, nextDelay());
-    }
+      const progressInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(100, (elapsed / duration) * 100);
+        
+        const shown = Math.round(progress);
+        pt.textContent = `${shown}%`;
+        pf.style.width = `${progress}%`;
 
-    setTimeout(tick, nextDelay());
+        if (progress >= 100) {
+          clearInterval(progressInterval);
+          setTimeout(() => initializePasswordScreen(), 450);
+        }
+      }, updateInterval);
+    }, 100);
   }
 
   function exitToUrl() {
@@ -210,40 +290,137 @@
     }, 200);
   }
 
-  // Wire up buttons
-  btnExitMain.addEventListener('click', exitToUrl);
-  btnOpen.addEventListener('click', () => {
-    showScreen(messageScreen);
-    try { spawnBalloons(30); } catch (_) { /* ignore */ }
-  });
-  btnOpenCake.addEventListener('click', () => {
-    showScreen(cakeScreen);
-    initializeInteractiveCake();
-  });
-  btnBackToMessage.addEventListener('click', () => {
-    cleanupCakeScreen();
-    clearConfetti();
-    showScreen(messageScreen);
-  });
-  btnExitCake.addEventListener('click', () => {
-    cleanupCakeScreen();
-    exitToUrl();
-  });
-  btnExitMessage.addEventListener('click', exitToUrl);
-  
-  // Password input event listeners
-  passwordInput.addEventListener('keypress', (event) => {
-    if (event.key === 'Enter') {
-      validatePassword();
+  // Initialize all event listeners
+  function initializeEventListeners() {
+    // Re-query elements if they're null (safety check)
+    const pInput = document.getElementById('password-input');
+    const pBtn = document.getElementById('password-submit-btn');
+    
+    // Wire up buttons
+    if (btnExitMain) {
+      btnExitMain.addEventListener('click', exitToUrl);
     }
-  });
-  
-  passwordInput.addEventListener('input', (event) => {
-    // Clear any existing error styling when user types
-    if (passwordInput.style.animation === 'shake 0.5s ease-in-out') {
-      passwordInput.style.animation = '';
+    if (btnOpen) {
+      btnOpen.addEventListener('click', () => {
+        showScreen(selectionScreen);
+      });
     }
-  });
+    if (btnOpenMessage) {
+      btnOpenMessage.addEventListener('click', () => {
+        showScreen(messageScreen);
+        try { spawnBalloons(30); } catch (_) { /* ignore */ }
+      });
+    }
+    if (btnOpenCakeSelection) {
+      btnOpenCakeSelection.addEventListener('click', () => {
+        showScreen(cakeScreen);
+        initializeInteractiveCake();
+        startCountdown();
+      });
+    }
+    if (btnBackToMainMenuMessage) {
+      btnBackToMainMenuMessage.addEventListener('click', () => {
+        showScreen(selectionScreen);
+      });
+    }
+    if (btnBackToMainMenuCake) {
+      btnBackToMainMenuCake.addEventListener('click', () => {
+        cleanupCakeScreen();
+        showScreen(selectionScreen);
+      });
+    }
+    if (btnExitCake) {
+      btnExitCake.addEventListener('click', () => {
+        cleanupCakeScreen();
+        exitToUrl();
+      });
+    }
+    if (btnExitMessage) {
+      btnExitMessage.addEventListener('click', exitToUrl);
+    }
+    
+    // Cake info button and modal
+    const cakeInfoBtn = document.getElementById('cake-info-btn');
+    const cakeInfoModal = document.getElementById('cake-info-modal');
+    const cakeInfoClose = document.getElementById('cake-info-close');
+    
+    if (cakeInfoBtn && cakeInfoModal) {
+      cakeInfoBtn.addEventListener('click', () => {
+        cakeInfoModal.classList.remove('hidden');
+      });
+    }
+    
+    if (cakeInfoClose && cakeInfoModal) {
+      cakeInfoClose.addEventListener('click', () => {
+        cakeInfoModal.classList.add('hidden');
+      });
+    }
+    
+    // Close modal when clicking outside
+    if (cakeInfoModal) {
+      cakeInfoModal.addEventListener('click', (e) => {
+        if (e.target === cakeInfoModal) {
+          cakeInfoModal.classList.add('hidden');
+        }
+      });
+    }
+    
+    // Password input event listeners
+    const inputEl = pInput || passwordInput;
+    if (inputEl) {
+      inputEl.addEventListener('keypress', (event) => {
+        // Detect Caps Lock state
+        if (event.getModifierState) {
+          isCapsLockOn = event.getModifierState('CapsLock');
+        }
+        
+        if (event.key === 'Enter') {
+          validatePassword();
+        }
+      });
+      
+      inputEl.addEventListener('keydown', (event) => {
+        // Detect Caps Lock state on keydown as well (more reliable)
+        if (event.getModifierState) {
+          isCapsLockOn = event.getModifierState('CapsLock');
+        }
+      });
+      
+      inputEl.addEventListener('keyup', (event) => {
+        // Detect Caps Lock state on keyup
+        if (event.getModifierState) {
+          isCapsLockOn = event.getModifierState('CapsLock');
+        }
+      });
+      
+      inputEl.addEventListener('input', (event) => {
+        // Clear any existing error styling when user types
+        if (inputEl.style.animation === 'shake 0.5s ease-in-out') {
+          inputEl.style.animation = '';
+        }
+      });
+    } else {
+      console.error('Password input element not found');
+    }
+
+    // Password submit button event listener
+    const btnEl = pBtn || passwordSubmitBtn;
+    if (btnEl) {
+      btnEl.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Submit button clicked');
+        const input = document.getElementById('password-input');
+        if (input) {
+          validatePassword();
+        } else {
+          console.error('Password input not found');
+        }
+      });
+    } else {
+      console.error('Password submit button not found');
+    }
+  }
 
   // Interactive Cake functionality
   let candles = [];
@@ -254,6 +431,12 @@
   audio.preload = 'auto'; // Preload the audio
   let blowOutInterval;
   let confettiInterval;
+  let backgroundNoiseLevel = 0; // Track background noise level
+  
+  // Countdown Timer functionality
+  let countdownInterval = null;
+  let countdownStartTime = null;
+  const COUNTDOWN_DURATION = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
 
   function initializeInteractiveCake() {
     if (!interactiveCake) return;
@@ -311,29 +494,12 @@
   }
 
   function addMicrophoneIndicator() {
-    const indicator = document.createElement('div');
-    indicator.id = 'mic-indicator';
-    indicator.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 10px;
-      border-radius: 5px;
-      font-size: 14px;
-      z-index: 1000;
-    `;
-    indicator.textContent = '🎤 Microphone: Checking...';
-    document.body.appendChild(indicator);
+    // Microphone indicator removed - no status messages will be shown
   }
 
 
   function updateMicrophoneStatus(status) {
-    const indicator = document.getElementById('mic-indicator');
-    if (indicator) {
-      indicator.textContent = `🎤 Microphone: ${status}`;
-    }
+    // Microphone status messages removed - no messages will be shown
   }
 
   function updateCandleCount() {
@@ -343,6 +509,37 @@
     if (candleCountDisplay) {
       candleCountDisplay.textContent = activeCandles;
     }
+  }
+
+  function calibrateBackgroundNoise() {
+    if (!analyser) return;
+    
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    let samples = [];
+    
+    // Take multiple samples over 2 seconds to get average background noise
+    const sampleInterval = setInterval(() => {
+      analyser.getByteFrequencyData(dataArray);
+      
+      let highFreqSum = 0;
+      const midPoint = Math.floor(bufferLength / 2);
+      
+      for (let i = midPoint; i < bufferLength; i++) {
+        highFreqSum += dataArray[i];
+      }
+      
+      const highFreqAvg = highFreqSum / midPoint;
+      samples.push(highFreqAvg);
+      
+      if (samples.length >= 10) { // Take 10 samples (2 seconds)
+        clearInterval(sampleInterval);
+        // Use median instead of average to avoid outliers
+        samples.sort((a, b) => a - b);
+        backgroundNoiseLevel = samples[Math.floor(samples.length / 2)];
+        console.log("Background noise level calibrated:", backgroundNoiseLevel);
+      }
+    }, 200);
   }
 
   function addCandle(left, top) {
@@ -372,7 +569,11 @@
     const rect = interactiveCake.getBoundingClientRect();
     const left = event.clientX - rect.left;
     const top = event.clientY - rect.top;
-    addCandle(left, top);
+    
+    // Only allow candle placement at the top of the cake (top 50px)
+    if (top <= 50) {
+      addCandle(left, top);
+    }
   });
 
   function isBlowing() {
@@ -381,17 +582,38 @@
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteFrequencyData(dataArray);
 
-    let sum = 0;
+    // Focus on higher frequencies (blowing creates more high-frequency noise)
+    let highFreqSum = 0;
+    let lowFreqSum = 0;
+    const midPoint = Math.floor(bufferLength / 2);
+    
     for (let i = 0; i < bufferLength; i++) {
-      sum += dataArray[i];
+      if (i < midPoint) {
+        lowFreqSum += dataArray[i];
+      } else {
+        highFreqSum += dataArray[i];
+      }
     }
-    let average = sum / bufferLength;
-
-    // Very conservative threshold - only detect strong blowing
-    // This should prevent any false positives from background noise
-    const isBlowingDetected = average > 25; // Much higher threshold
-    console.log('Audio level:', average, 'Blowing:', isBlowingDetected);
-    return isBlowingDetected;
+    
+    const highFreqAvg = highFreqSum / midPoint;
+    const lowFreqAvg = lowFreqSum / midPoint;
+    
+    // Blowing should have significantly more high-frequency content
+    const freqRatio = highFreqAvg / (lowFreqAvg + 1); // +1 to avoid division by zero
+    
+    // Dynamic threshold based on background noise - more responsive
+    const dynamicThreshold = Math.max(backgroundNoiseLevel * 2, 15); // At least 2x background noise or 15 minimum
+    
+    // More responsive detection - need high volume AND frequency ratio above background
+    const isBlowingDetected = highFreqAvg > dynamicThreshold && freqRatio > 1.8 && highFreqAvg > (backgroundNoiseLevel + 10);
+    
+    // Fallback: if frequency analysis fails, use simple volume detection
+    const fallbackDetection = highFreqAvg > (backgroundNoiseLevel * 1.5 + 20);
+    
+    const finalDetection = isBlowingDetected || fallbackDetection;
+    
+    console.log('High freq:', highFreqAvg, 'Low freq:', lowFreqAvg, 'Ratio:', freqRatio, 'Background:', backgroundNoiseLevel, 'Threshold:', dynamicThreshold, 'Blowing:', finalDetection);
+    return finalDetection;
   }
 
   function blowOutCandles() {
@@ -409,7 +631,6 @@
     
     if (blowingDetected) {
       console.log("Blowing detected! Attempting to blow out candles...");
-      updateMicrophoneStatus("Blowing detected! 💨");
       
       candles.forEach((candle) => {
         if (!candle.classList.contains("out") && Math.random() > 0.1) { // Lower chance to make it more realistic
@@ -427,7 +648,6 @@
       // Check if all candles are out
       if (candles.every((candle) => candle.classList.contains("out"))) {
         console.log("All candles blown out! Triggering celebration...");
-        updateMicrophoneStatus("All candles out! 🎉");
         
         // Stop the detection interval to prevent multiple celebrations
         if (blowOutInterval) {
@@ -448,12 +668,10 @@
       }
     } else {
       // Update status to show ready state
-      updateMicrophoneStatus("Ready - Blow to extinguish candles!");
     }
   }
 
   function setupMicrophone() {
-    updateMicrophoneStatus("Requesting access...");
     
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices
@@ -467,7 +685,6 @@
         })
         .then(function (stream) {
           console.log("Microphone access granted");
-          updateMicrophoneStatus("Ready - Blow to extinguish candles!");
           
           // Create audio context with better settings
           audioContext = new (window.AudioContext || window.webkitAudioContext)({
@@ -475,17 +692,17 @@
           });
           
           analyser = audioContext.createAnalyser();
-          analyser.fftSize = 1024; // Higher resolution for better detection
-          analyser.smoothingTimeConstant = 0.1; // Less smoothing for more responsive detection
-          analyser.minDecibels = -90;
-          analyser.maxDecibels = -10;
+          analyser.fftSize = 2048; // Even higher resolution for better frequency analysis
+          analyser.smoothingTimeConstant = 0.05; // Less smoothing for more responsive detection
+          analyser.minDecibels = -100; // Lower threshold to catch quieter sounds
+          analyser.maxDecibels = -5; // Higher max to allow louder sounds
           
           microphone = audioContext.createMediaStreamSource(stream);
           microphone.connect(analyser);
           
-          // Wait for microphone to stabilize, then start detection
+          // Wait for microphone to stabilize, then calibrate background noise
           setTimeout(() => {
-            updateMicrophoneStatus("Ready - Blow to extinguish candles!");
+            calibrateBackgroundNoise();
             // Start checking for blowing with less frequent intervals
             blowOutInterval = setInterval(blowOutCandles, 200);
             console.log("Microphone setup complete - detection started");
@@ -493,13 +710,11 @@
         })
         .catch(function (err) {
           console.log("Unable to access microphone: " + err);
-          updateMicrophoneStatus("Failed - Click candles to blow them out");
           // Fallback: allow manual candle blowing by clicking
           setupManualBlowing();
         });
     } else {
       console.log("getUserMedia not supported on your browser!");
-      updateMicrophoneStatus("Not supported - Click candles to blow them out");
       setupManualBlowing();
     }
   }
@@ -733,17 +948,62 @@
     }
   }
 
-  // Kick off loading once DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => { 
-      loadUsedPasswords();
-      startLoading(); 
-      setupAutoResize(); 
-    });
-  } else {
+  function startLoading() {
+    // Small delay to ensure DOM is fully ready
+    setTimeout(() => {
+      // Get elements directly to ensure they exist
+      const pt = document.getElementById('progress-text');
+      const pf = document.getElementById('progress-fill');
+      
+      if (!pt || !pf) {
+        console.error('Loading elements not found', { pt, pf });
+        // If elements not found, skip loading and go to password screen
+        setTimeout(() => initializePasswordScreen(), 100);
+        return;
+      }
+      
+      console.log('Starting loading animation');
+      
+      // Initialize to 0%
+      pt.textContent = '0%';
+      pf.style.width = '0%';
+      
+      const duration = 12000; // 12 seconds total for slower loading
+      const startTime = Date.now();
+      const updateInterval = 50; // Update every 50ms for smooth animation
+
+      const progressInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(100, (elapsed / duration) * 100);
+        
+        const shown = Math.round(progress);
+        pt.textContent = `${shown}%`;
+        pf.style.width = `${progress}%`;
+
+        if (progress >= 100) {
+          clearInterval(progressInterval);
+          setTimeout(() => {
+            showScreen(passwordScreen);
+            initializePasswordScreen();
+          }, 450);
+        }
+      }, updateInterval);
+    }, 100);
+  }
+
+  // Initialize everything once DOM is ready
+  function initialize() {
     loadUsedPasswords();
-    startLoading();
     setupAutoResize();
+    initializeEventListeners();
+    startLoading();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+  } else {
+    // DOM already loaded, initialize immediately
+    initialize();
   }
 
   // Balloons
@@ -893,6 +1153,85 @@
   }
 
 
+  // Countdown Timer Functions
+  function startCountdown() {
+    // Clear any existing countdown interval
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+    
+    // Check if there's a saved countdown start time
+    const savedStartTime = localStorage.getItem(COUNTDOWN_STORAGE_KEY);
+    
+    if (savedStartTime) {
+      // Resume from saved time
+      countdownStartTime = parseInt(savedStartTime, 10);
+      console.log("Resuming countdown from saved time");
+    } else {
+      // Start new countdown and save it
+      countdownStartTime = Date.now();
+      localStorage.setItem(COUNTDOWN_STORAGE_KEY, countdownStartTime.toString());
+      console.log("Starting new countdown and saving to memory");
+    }
+    
+    // Update immediately
+    updateCountdown();
+    
+    // Update every second
+    countdownInterval = setInterval(updateCountdown, 1000);
+  }
+  
+  function updateCountdown() {
+    if (!countdownStartTime) return;
+    
+    const now = Date.now();
+    const elapsed = now - countdownStartTime;
+    const remaining = Math.max(0, COUNTDOWN_DURATION - elapsed);
+    
+    // Calculate days, hours, minutes, seconds
+    const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+    
+    // Update display
+    const daysEl = document.getElementById('countdown-days');
+    const hoursEl = document.getElementById('countdown-hours');
+    const minutesEl = document.getElementById('countdown-minutes');
+    const secondsEl = document.getElementById('countdown-seconds');
+    
+    if (daysEl) daysEl.textContent = String(days).padStart(3, '0');
+    if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
+    if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
+    if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, '0');
+    
+    // If countdown reaches zero, clear the saved time
+    if (remaining <= 0) {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+      // Clear saved time when countdown completes
+      localStorage.removeItem(COUNTDOWN_STORAGE_KEY);
+    }
+  }
+  
+  // Function to update countdown even when not on cake screen (for background updates)
+  function updateCountdownIfActive() {
+    const savedStartTime = localStorage.getItem(COUNTDOWN_STORAGE_KEY);
+    if (savedStartTime && cakeScreen && cakeScreen.classList.contains('active')) {
+      // Only update if we're on the cake screen
+      if (!countdownStartTime) {
+        countdownStartTime = parseInt(savedStartTime, 10);
+      }
+      if (!countdownInterval) {
+        updateCountdown();
+        countdownInterval = setInterval(updateCountdown, 1000);
+      }
+    }
+  }
+
   // Cleanup function for cake screen
   function cleanupCakeScreen() {
     // Stop audio
@@ -911,6 +1250,14 @@
       clearInterval(confettiInterval);
       confettiInterval = null;
     }
+    
+    // Pause countdown interval (but keep the start time saved in localStorage)
+    // This way the countdown continues even when they leave
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+    // Don't clear countdownStartTime - keep it so it can resume when they come back
 
     // Clear confetti
     clearConfetti();
