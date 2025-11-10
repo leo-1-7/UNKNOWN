@@ -44,6 +44,7 @@
     <!-- Password Screen -->
     <section id="password-screen" class="screen" aria-label="Password Entry">
         <div class="password-wrapper">
+            <button id="password-info-btn" class="password-info-btn" aria-label="Show Instructions">!</button>
             <div class="password-title">ENTER ONE TIME PASSWORD</div>
             <div class="password-input-container">
                 <input type="text" id="password-input" class="password-input" placeholder="Type password here..." />
@@ -54,11 +55,20 @@
                 </button>
             </div>
             <div id="password-caps-message" class="password-caps-message">USE CAPSLOCK OR CAPITAL LETTERS ONLY</div>
-            <div id="password-instruction" class="password-instruction">
-                ! THE PASSWORD IS ONLY 1 TIME USE AND YOU CANNOT USE IT AGAIN<br>! KINDLY ROTATE YOUR PHONE TO LANDSCAPE.
-            </div>
             <div id="welcome-message" class="welcome-message hidden">
                 <span class="welcome-text">WELCOME</span>
+            </div>
+        </div>
+        
+        <!-- Password Info Modal -->
+        <div id="password-info-modal" class="password-info-modal hidden">
+            <div class="password-info-modal-content">
+                <button id="password-info-close" class="password-info-close" aria-label="Close">×</button>
+                <div class="password-info-message">
+                    <p class="password-info-text">! THE PASSWORD IS ONLY 1 TIME USE AND YOU CANNOT USE IT AGAIN.</p>
+                    <p class="password-info-text">! KINDLY ROTATE YOUR PHONE TO LANDSCAPE.</p>
+                    <p class="password-info-text">! MUCH BETTER IF YOU USE YOUR PC/LAPTOP.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -174,8 +184,9 @@ ONCE AGAIN, HAPPY HAPPY BIRTHDAY! MAY THIS BE ONE OF YOUR BEST YEARS YET, FILLED
                 <button id="cake-info-close" class="cake-info-close" aria-label="Close">×</button>
                 <div class="cake-info-message">
                     <p class="cake-info-text">*PLEASE ALLOW MICROPHONE.</p>
-                    <p class="cake-info-text">*ADD AS MUCH CANDLE AS YOU WANT AND BLOW YOUR MICROPHONE.</p>
+                    <p class="cake-info-text"><span class="clickable-text" id="clickable-asterisk">*</span>ADD AS MUCH CANDLE AS YOU WANT AND BLOW YOUR MICROPHONE.</p>
                     <p class="cake-info-text">*SOMETIMES THE MICROPHONE IS ACTING CRAZY, BUT IM FIXING IT.</p>
+                    <button id="reset-timer-btn" class="reset-timer-btn hidden">Reset Timer to 365 Days</button>
                 </div>
             </div>
         </div>

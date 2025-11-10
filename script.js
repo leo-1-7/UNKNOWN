@@ -40,9 +40,28 @@
     // If showing cake screen, check if countdown should resume
     if (screenEl === cakeScreen) {
       const savedStartTime = localStorage.getItem(COUNTDOWN_STORAGE_KEY);
+      const countdownDisplay = document.getElementById('countdown-display');
+      
+      const countdownTitle = document.querySelector('.countdown-title');
+      
       if (savedStartTime && !countdownInterval) {
         // Resume countdown if there's a saved time and no active interval
+        // This means candles were already blown, so show the countdown
+        if (countdownDisplay) {
+          countdownDisplay.classList.add('visible');
+        }
+        if (countdownTitle) {
+          countdownTitle.classList.add('visible');
+        }
         startCountdown();
+      } else {
+        // Hide countdown if candles haven't been blown yet
+        if (countdownDisplay) {
+          countdownDisplay.classList.remove('visible');
+        }
+        if (countdownTitle) {
+          countdownTitle.classList.remove('visible');
+        }
       }
     }
   }
@@ -127,8 +146,11 @@
     console.log('Is valid password:', VALID_PASSWORDS.includes(enteredPassword));
     console.log('Is already used:', usedPasswords.has(enteredPassword));
     
-    // Check if password is valid and not already used
-    if (VALID_PASSWORDS.includes(enteredPassword) && !usedPasswords.has(enteredPassword)) {
+    // Check if password is valid
+    const isValidPassword = VALID_PASSWORDS.includes(enteredPassword);
+    const isAlreadyUsed = usedPasswords.has(enteredPassword);
+    
+    if (isValidPassword && !isAlreadyUsed) {
       // Correct password - hide password input container and instruction messages
       if (container) {
         container.style.display = 'none';
@@ -163,6 +185,35 @@
       // Mark this specific password as used
       usedPasswords.add(enteredPassword);
       saveUsedPasswords();
+      
+    } else if (isValidPassword && isAlreadyUsed) {
+      // Password is valid but already used
+      showErrorMessage(false, 'PASSWORD HAS BEEN ALREADY USED');
+      
+      // Flash the input field
+      input.style.animation = 'shake 0.5s ease-in-out';
+      input.value = '';
+      
+      // Flash the button
+      if (btn) {
+        btn.style.animation = 'button-flash 0.5s ease-in-out';
+        setTimeout(() => {
+          btn.style.animation = '';
+        }, 500);
+      }
+      
+      // Flash the container
+      if (container) {
+        container.style.animation = 'container-flash 0.5s ease-in-out';
+        setTimeout(() => {
+          container.style.animation = '';
+        }, 500);
+      }
+      
+      setTimeout(() => {
+        input.style.animation = '';
+        input.focus();
+      }, 500);
       
     } else {
       // Wrong password - check if user typed mostly lowercase (indicating Caps Lock is off)
@@ -201,7 +252,7 @@
     }
   }
 
-  function showErrorMessage(showCapsMessage = false) {
+  function showErrorMessage(showCapsMessage = false, customMessage = null) {
     // Remove any existing error message
     const existingError = document.getElementById('error-message');
     if (existingError) {
@@ -219,7 +270,13 @@
     const errorMsg = document.createElement('div');
     errorMsg.id = 'error-message';
     errorMsg.className = 'error-message';
-    errorMsg.textContent = showCapsMessage ? 'USE CAPSLOCK' : 'WRONG PASSWORD';
+    
+    // Use custom message if provided, otherwise use default logic
+    if (customMessage) {
+      errorMsg.textContent = customMessage;
+    } else {
+      errorMsg.textContent = showCapsMessage ? 'USE CAPSLOCK' : 'WRONG PASSWORD';
+    }
     
     // Insert after password input container
     const passwordContainer = input.parentNode;
@@ -315,7 +372,16 @@
       btnOpenCakeSelection.addEventListener('click', () => {
         showScreen(cakeScreen);
         initializeInteractiveCake();
-        startCountdown();
+        // Don't start countdown yet - wait for candles to be blown
+        // Hide countdown display and title initially
+        const countdownDisplay = document.getElementById('countdown-display');
+        const countdownTitle = document.querySelector('.countdown-title');
+        if (countdownDisplay) {
+          countdownDisplay.classList.remove('visible');
+        }
+        if (countdownTitle) {
+          countdownTitle.classList.remove('visible');
+        }
       });
     }
     if (btnBackToMainMenuMessage) {
@@ -365,26 +431,106 @@
       });
     }
     
+    // Clickable asterisk to show reset timer button
+    const clickableAsterisk = document.getElementById('clickable-asterisk');
+    const resetTimerBtn = document.getElementById('reset-timer-btn');
+    
+    if (clickableAsterisk && resetTimerBtn) {
+      clickableAsterisk.addEventListener('click', () => {
+        // Toggle the reset button visibility
+        resetTimerBtn.classList.toggle('hidden');
+      });
+      
+      // Reset timer functionality
+      resetTimerBtn.addEventListener('click', () => {
+        // Reset countdown to 365 days
+        countdownStartTime = Date.now();
+        localStorage.setItem(COUNTDOWN_STORAGE_KEY, countdownStartTime.toString());
+        
+        // Update the countdown display immediately
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+        }
+        updateCountdown();
+        countdownInterval = setInterval(updateCountdown, 1000);
+        
+        // Hide the reset button after resetting
+        resetTimerBtn.classList.add('hidden');
+        
+        console.log("Countdown reset to 365 days");
+      });
+    }
+    
+    // Password info button and modal
+    const passwordInfoBtn = document.getElementById('password-info-btn');
+    const passwordInfoModal = document.getElementById('password-info-modal');
+    const passwordInfoClose = document.getElementById('password-info-close');
+    
+    if (passwordInfoBtn && passwordInfoModal) {
+      passwordInfoBtn.addEventListener('click', () => {
+        passwordInfoModal.classList.remove('hidden');
+      });
+    }
+    
+    if (passwordInfoClose && passwordInfoModal) {
+      passwordInfoClose.addEventListener('click', () => {
+        passwordInfoModal.classList.add('hidden');
+      });
+    }
+    
+    // Close modal when clicking outside
+    if (passwordInfoModal) {
+      passwordInfoModal.addEventListener('click', (e) => {
+        if (e.target === passwordInfoModal) {
+          passwordInfoModal.classList.add('hidden');
+        }
+      });
+    }
+    
     // Password input event listeners
     const inputEl = pInput || passwordInput;
     if (inputEl) {
-      inputEl.addEventListener('keypress', (event) => {
-        // Detect Caps Lock state
-        if (event.getModifierState) {
-          isCapsLockOn = event.getModifierState('CapsLock');
-        }
-        
-        if (event.key === 'Enter') {
-          validatePassword();
-        }
-      });
+      // Detect if device is mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                       (window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
       
       inputEl.addEventListener('keydown', (event) => {
         // Detect Caps Lock state on keydown as well (more reliable)
         if (event.getModifierState) {
           isCapsLockOn = event.getModifierState('CapsLock');
         }
+        
+        // On mobile, handle Enter key to insert paragraph spacing instead of submitting
+        if (isMobile && event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          
+          const input = event.target;
+          const start = input.selectionStart;
+          const end = input.selectionEnd;
+          const value = input.value;
+          
+          // Insert double space (paragraph spacing representation) instead of submitting
+          const newValue = value.substring(0, start) + '  ' + value.substring(end);
+          input.value = newValue;
+          
+          // Set cursor position after the inserted spaces
+          const newCursorPos = start + 2;
+          input.setSelectionRange(newCursorPos, newCursorPos);
+        }
       });
+      
+      inputEl.addEventListener('keypress', (event) => {
+        // Detect Caps Lock state
+        if (event.getModifierState) {
+          isCapsLockOn = event.getModifierState('CapsLock');
+        }
+        
+        // Only submit on Enter if not mobile (mobile is handled in keydown)
+        if (!isMobile && event.key === 'Enter') {
+          validatePassword();
+        }
+      });
+      
       
       inputEl.addEventListener('keyup', (event) => {
         // Detect Caps Lock state on keyup
@@ -436,7 +582,7 @@
   // Countdown Timer functionality
   let countdownInterval = null;
   let countdownStartTime = null;
-  const COUNTDOWN_DURATION = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+  const COUNTDOWN_DURATION = 365 * 24 * 60 * 60 * 1000; // Exactly 365 days in milliseconds (31,536,000,000 ms)
 
   function initializeInteractiveCake() {
     if (!interactiveCake) return;
@@ -655,6 +801,17 @@
           blowOutInterval = null;
         }
         
+        // Show and start countdown
+        const countdownDisplay = document.getElementById('countdown-display');
+        const countdownTitle = document.querySelector('.countdown-title');
+        if (countdownDisplay) {
+          countdownDisplay.classList.add('visible');
+        }
+        if (countdownTitle) {
+          countdownTitle.classList.add('visible');
+        }
+        startCountdown();
+        
         // Play audio immediately
         audio.currentTime = 0;
         audio.play().catch(err => {
@@ -748,6 +905,17 @@
         // Check if all candles are out
         if (candles.every((c) => c.classList.contains("out"))) {
           console.log("All candles blown out manually! Triggering celebration...");
+          
+          // Show and start countdown
+          const countdownDisplay = document.getElementById('countdown-display');
+          const countdownTitle = document.querySelector('.countdown-title');
+          if (countdownDisplay) {
+            countdownDisplay.classList.add('visible');
+          }
+          if (countdownTitle) {
+            countdownTitle.classList.add('visible');
+          }
+          startCountdown();
           
           // Play audio immediately
           audio.currentTime = 0;
@@ -1161,35 +1329,45 @@
       countdownInterval = null;
     }
     
-    // Check if there's a saved countdown start time
+    // Check if there's a saved countdown start time in localStorage
+    // This persists even if user closes browser or navigates away
     const savedStartTime = localStorage.getItem(COUNTDOWN_STORAGE_KEY);
     
     if (savedStartTime) {
-      // Resume from saved time
+      // Resume from saved time - countdown continues from where it left off
       countdownStartTime = parseInt(savedStartTime, 10);
-      console.log("Resuming countdown from saved time");
+      console.log("Resuming countdown from saved time:", new Date(countdownStartTime));
     } else {
-      // Start new countdown and save it
+      // Start new countdown and save it to localStorage
+      // localStorage persists across browser sessions
       countdownStartTime = Date.now();
       localStorage.setItem(COUNTDOWN_STORAGE_KEY, countdownStartTime.toString());
-      console.log("Starting new countdown and saving to memory");
+      console.log("Starting new 365-day countdown and saving to localStorage");
     }
     
     // Update immediately
     updateCountdown();
     
-    // Update every second
+    // Update every second - countdown continues running
     countdownInterval = setInterval(updateCountdown, 1000);
   }
   
   function updateCountdown() {
-    if (!countdownStartTime) return;
+    if (!countdownStartTime) {
+      // Try to load from localStorage if not set
+      const savedStartTime = localStorage.getItem(COUNTDOWN_STORAGE_KEY);
+      if (savedStartTime) {
+        countdownStartTime = parseInt(savedStartTime, 10);
+      } else {
+        return;
+      }
+    }
     
     const now = Date.now();
     const elapsed = now - countdownStartTime;
     const remaining = Math.max(0, COUNTDOWN_DURATION - elapsed);
     
-    // Calculate days, hours, minutes, seconds
+    // Calculate days, hours, minutes, seconds (365 days total)
     const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
     const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
@@ -1206,14 +1384,16 @@
     if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
     if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, '0');
     
-    // If countdown reaches zero, clear the saved time
+    // Only clear saved time when countdown reaches zero (after 365 days)
+    // Otherwise, it persists forever in localStorage
     if (remaining <= 0) {
       if (countdownInterval) {
         clearInterval(countdownInterval);
         countdownInterval = null;
       }
-      // Clear saved time when countdown completes
+      // Only clear localStorage when countdown completes after full 365 days
       localStorage.removeItem(COUNTDOWN_STORAGE_KEY);
+      countdownStartTime = null;
     }
   }
   
@@ -1252,12 +1432,14 @@
     }
     
     // Pause countdown interval (but keep the start time saved in localStorage)
-    // This way the countdown continues even when they leave
+    // The countdown continues in the background even when they leave or close browser
+    // localStorage persists the start time permanently until countdown completes
     if (countdownInterval) {
       clearInterval(countdownInterval);
       countdownInterval = null;
     }
-    // Don't clear countdownStartTime - keep it so it can resume when they come back
+    // Don't clear countdownStartTime or localStorage - it persists forever
+    // The countdown will resume automatically when they return to the cake screen
 
     // Clear confetti
     clearConfetti();
